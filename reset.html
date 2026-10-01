@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Genç Eksperlik | Şifre Yenileme</title>
+<style>
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial;background:#eef4fa;color:#17334c;display:grid;place-items:center;min-height:100vh;padding:20px}
+.card{width:min(440px,100%);background:#fff;border:1px solid #d6e2ed;border-radius:14px;padding:24px;box-shadow:0 8px 30px rgba(20,45,65,.12)}
+h1{margin:0 0 6px;color:#1648d8} p{color:#6b7f91}
+label{display:block;margin:14px 0 6px;font-size:13px;font-weight:700}
+input{width:100%;box-sizing:border-box;padding:12px;border:1px solid #cbd9e6;border-radius:8px;font:inherit}
+button{width:100%;margin-top:16px;padding:12px;border:0;border-radius:8px;background:#176fe8;color:#fff;font-weight:800;font:inherit;cursor:pointer}
+.msg{margin-top:14px;font-size:13px;line-height:1.45} .ok{color:#08764e} .err{color:#c62828}
+</style>
+</head>
+<body>
+<div class="card">
+<h1>Yeni Şifre Belirle</h1>
+<p>SEİDA APART / Birleşik Mali Yönetim hesabınız için yeni şifrenizi oluşturun.</p>
+<div id="form" style="display:none">
+<label>Yeni Şifre</label>
+<input id="p1" type="password" autocomplete="new-password" minlength="6">
+<label>Yeni Şifre Tekrar</label>
+<input id="p2" type="password" autocomplete="new-password" minlength="6">
+<button id="save">Yeni Şifreyi Kaydet</button>
+</div>
+<div id="msg" class="msg">Şifre yenileme bağlantısı doğrulanıyor...</div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const sb = supabase.createClient(
+  'https://uqavfzrheswwkzqrnfou.supabase.co',
+  'sb_publishable_YohfHa2Cns9Q-iaRW2nIbA_LHXUsQb0',
+  {auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}}
+);
+const msg=document.getElementById('msg'), form=document.getElementById('form');
+
+async function ready(){
+  const {data:{session}, error} = await sb.auth.getSession();
+  if(error){ msg.className='msg err'; msg.textContent='Bağlantı doğrulanamadı: '+error.message; return; }
+  if(session){ form.style.display='block'; msg.textContent='Yeni şifrenizi belirleyebilirsiniz.'; return; }
+
+  sb.auth.onAuthStateChange((event,session)=>{
+    if((event==='PASSWORD_RECOVERY'||event==='SIGNED_IN') && session){
+      form.style.display='block';
+      msg.textContent='Yeni şifrenizi belirleyebilirsiniz.';
+    }
+  });
+
+  setTimeout(async()=>{
+    const {data:{session}}=await sb.auth.getSession();
+    if(!session && form.style.display==='none'){
+      msg.className='msg err';
+      msg.textContent='Şifre yenileme bağlantısı geçersiz veya süresi dolmuş. Supabase’ten yeni bir password recovery e-postası gönderin.';
+    }
+  },2500);
+}
+ready();
+
+document.getElementById('save').onclick=async()=>{
+  const p1=document.getElementById('p1').value;
+  const p2=document.getElementById('p2').value;
+  if(!p1 || p1.length<6){msg.className='msg err';msg.textContent='Şifre en az 6 karakter olmalı.';return;}
+  if(p1!==p2){msg.className='msg err';msg.textContent='İki şifre aynı değil.';return;}
+  msg.className='msg'; msg.textContent='Şifre kaydediliyor...';
+  const {error}=await sb.auth.updateUser({password:p1});
+  if(error){msg.className='msg err';msg.textContent='Şifre değiştirilemedi: '+error.message;return;}
+  msg.className='msg ok'; msg.textContent='Şifre başarıyla değiştirildi. Programa yönlendiriliyorsunuz...';
+  setTimeout(()=>location.replace('./'),1200);
+};
+</script>
+</body>
+</html>
